@@ -46,8 +46,6 @@ UWiiUseController::UWiiUseController()
 	PrimaryComponentTick.bCanEverTick = true;	
 	
 	bIsConnected = false;
-	WiiUseUsingACC = true;
-	WiiUseUsingIR = false;
 	
 	WiiController.SetNum(MAX_WIIMOTES);
 	for (auto& wii : WiiController) {
@@ -57,13 +55,11 @@ UWiiUseController::UWiiUseController()
 		wii.Button_DOWN = false;
 		wii.Button_UP = false;
 		wii.Button_HOME = false;
-		wii.Button_LEFT = false;		
+		wii.Button_LEFT = false;
 		wii.Button_RIGHT = false;
 		wii.Button_ONE = false;
 		wii.Button_TWO = false;
-		wii.Button_PLUS = false;
-		wii.Button_MINUS = false;
-		wii.ControllerId = 0;
+		wii.ControllerId = -1;
 		wii.IR_Cursor.X = 0;
 		wii.IR_Cursor.Y = 0;
 		wii.IR_CursorZ = 0;
@@ -292,10 +288,6 @@ void UWiiUseController::BeginPlay()
 			if (WiimoteConnect()) {
 				UE_LOG(LogWiiUse, Warning, TEXT("Wiimotes connected"));
 			}
-			else {
-				UE_LOG(LogWiiUse, Warning, TEXT("Wiimotes not connected"));
-				PrimaryComponentTick.bCanEverTick = false;
-			}
 		}
 	}
 }
@@ -317,8 +309,7 @@ void UWiiUseController::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UWiiUseController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	Super::EndPlay(EndPlayReason);
-
+	//throw std::logic_error("The method or operation is not implemented.");
 }
 
 
@@ -326,33 +317,14 @@ void UWiiUseController::handle_event(int32 i)
 {
 	struct wiimote_t* wm = wiimotes[i];	
 
-	UE_LOG(LogWiiUse, Warning, TEXT("EVENT [Wiimote[%i] == id %i] ---"), i, wm->unid);
+	UE_LOG(LogWiiUse, Warning, TEXT("EVENT [id %i] ---"), wm->unid);
 
 	if (WiiController.IsValidIndex(i) == false) {
 		UE_LOG(LogWiiUse, Warning, TEXT("Wii Remote %i is not valid"), i);
 		return;
 	}
 
-	WiiController[i].ControllerId = wiimotes[i]->unid;
-
-	switch (i)
-	{
-	case 0:
-		wiiuse_set_leds(wiimotes[i], WIIMOTE_LED_1);
-		break;
-	case 1:
-		wiiuse_set_leds(wiimotes[i], WIIMOTE_LED_2);
-		break;
-	case 2:
-		wiiuse_set_leds(wiimotes[i], WIIMOTE_LED_3);
-		break;
-	case 3:
-		wiiuse_set_leds(wiimotes[i], WIIMOTE_LED_4);
-		break;
-	default:
-		wiiuse_set_leds(wiimotes[i], WIIMOTE_LED_NONE);
-	}
-	
+	WiiController[i].ControllerId = wm->unid;
 
 	if (IS_PRESSED(wm, WIIMOTE_BUTTON_A)) {
 		UE_LOG(LogWiiUse, Warning, TEXT("A pressed"));
@@ -404,7 +376,7 @@ void UWiiUseController::handle_event(int32 i)
 		WiiController[i].Button_MINUS = true;
 	}
 	if (IS_RELEASED(wm, WIIMOTE_BUTTON_MINUS)) {
-		WiiController[i].Button_MINUS = false;
+		WiiController[i].Button_MINUS =false;
 	}
 
 	if (IS_PRESSED(wm, WIIMOTE_BUTTON_PLUS)) {
@@ -450,12 +422,12 @@ void UWiiUseController::handle_event(int32 i)
 	//	wiiuse_motion_sensing(wm, 1);
 	//}
 
-	if (WiiUseUsingACC) {
+	//if (WiiUseUsingACC) {
 		wiiuse_motion_sensing(wm, 1);
-	}
-	else {
-		wiiuse_motion_sensing(wm, 0);
-	}
+	//}
+	//else {
+	//	wiiuse_motion_sensing(wm, 0);
+	//}
 
 	///*
 	//*	Pressing B will toggle the rumble
@@ -472,12 +444,12 @@ void UWiiUseController::handle_event(int32 i)
 	//if (IS_JUST_PRESSED(wm, WIIMOTE_BUTTON_DOWN)) {
 	//	wiiuse_set_ir(wm, 0);
 	//}
-	if (WiiUseUsingIR) {
+	//if (WiiUseUsingIR) {
 		wiiuse_set_ir(wm, 1);
-	}
-	else {
-		wiiuse_set_ir(wm, 0);
-	}
+	//}
+	//else {
+	//	wiiuse_set_ir(wm, 0);
+	//}
 
 	///*
 	//* Motion+ support
@@ -497,12 +469,13 @@ void UWiiUseController::handle_event(int32 i)
 
 	/* if the accelerometer is turned on then print angles */
 	if (WIIUSE_USING_ACC(wm)) {
-		WiiController[i].Acc.Y = wm->orient.roll;
-		WiiController[i].Acc.X = wm->orient.pitch * -1;
-		WiiController[i].Acc.Z = wm->orient.yaw;
-		WiiController[i].AccAngle.Y = wm->orient.a_roll;
-		WiiController[i].AccAngle.X = wm->orient.a_pitch * -1;
-		WiiController[i].AccAngle.Z = wm->orient.yaw;
+		UE_LOG(LogWiiUse, Warning, TEXT("WIIUSE_USING_ACC"));
+		WiiController[i].Acc.Z = wm->orient.roll;
+		WiiController[i].Acc.X = wm->orient.pitch;
+		WiiController[i].Acc.Y = wm->orient.yaw;
+		WiiController[i].AccAngle.Z = wm->orient.a_roll;
+		WiiController[i].AccAngle.X = wm->orient.a_pitch;
+		WiiController[i].AccAngle.Y = wm->orient.yaw;
 	}
 
 	/*
